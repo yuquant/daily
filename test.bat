@@ -1,0 +1,4 @@
+@ECHO OFF 
+ XCOPY C:\lan.log D:
+IF ERRORLEVEL 1 ECHO 文件拷贝失败 
+IF ERRORLEVEL 0 ECHO 成功拷贝文件
