@@ -38,8 +38,8 @@ def move_bad(nums_list):
     time_mean = time_array.mean()
     time_std = time_array.std()
     time_array[time_array > time_mean + 3 * time_std] = 200
-    plt.bar(range(len(num_list)), time_array)
-    plt.show()
+    # plt.bar(range(len(num_list)), time_array)
+    # plt.show()
 
 
 def data_sorted(nums_list):
@@ -57,9 +57,10 @@ def plot_histogram(nums_list, bar_num=800):
     时间间隔频率直方图
     """
     time_array = np.array(nums_list)
-    time_mean = time_array.mean()
-    time_std = time_array.std()
-    time_array[time_array > time_mean + 3 * time_std] = time_mean + 3 * time_std
+    # time_mean = time_array.mean()
+    # time_std = time_array.std()
+    # time_array[time_array > time_mean + 3 * time_std] = time_mean + 3 * time_std
+    time_array[time_array > 200] = 200
     pyplot.hist(time_array, bar_num)
     pyplot.xlabel('Minutes')
     pyplot.ylabel('Frequency')
@@ -79,7 +80,7 @@ def hours_frequency(file_name):
         day_hours[i] += 1
         day_hour.append(i)
 
-    hour_belong = pd.DataFrame(day_hour,columns=['检查时间点（时）'], index=clear_data.index)
+    hour_belong = pd.DataFrame(day_hour, columns=['检查时间点（时）'], index=clear_data.index)
     fi_res = pd.concat((clear_data, used_time,used_time2, hour_belong), axis=1)
     file_path = r'C:\Users\LiuWeipeng\AnacondaProjects\files\%s.xls' % file_name
     fi_res.to_excel(file_path, index=None)
@@ -99,7 +100,7 @@ def get_head_data():
     check_items = ['CT颅脑平扫', '头颅CT平扫']
     res = pd.DataFrame(columns=data_df.columns)
     for i in range(len(data_df)):
-        if data_df.iloc[i, 6] in check_items:
+        if data_df.iloc[i, 5] in check_items:
             res = res.append(data_df.loc[i])
     return res
 
@@ -109,17 +110,21 @@ def get_kidney_data():
     获取泌尿系统统计
     :return: DataFrame
     """
+    # check_items = ['CT双能泌尿系平扫(肾结石评估)',
+    #                '泌尿系CT平扫',
+    #                '泌尿系CT增强',
+    #                '双能泌尿系CT平扫（肾结石评估）',
+    #                'CT泌尿系多期增强'
+    #                ]
+
     check_items = ['CT双能泌尿系平扫(肾结石评估)',
-                   '泌尿系CT平扫',
-                   '泌尿系CT增强',
                    '双能泌尿系CT平扫（肾结石评估）',
-                   '双能泌尿系CT平扫（肾结石评估）',
-                   'CT泌尿系多期增强'
+                   '泌尿系CT平扫'
                    ]
     res = pd.DataFrame(columns=data_df.columns)
     for i in range(len(data_df)):
-        symptom = str(data_df.iloc[i, 11])
-        if data_df.iloc[i, 6] in check_items and symptom.find('结石') != -1:
+        symptom = str(data_df['影像学表现'][i])
+        if data_df['检查'][i] in check_items and symptom.find('结石') != -1:
                 res = res.append(data_df.loc[i])
 
     return res
@@ -141,20 +146,87 @@ def age_hist():
     """
     print('年龄频率直方图')
     age_list = list(clear_data['年龄'])
-    age_int = [int(s.strip('岁')) for s in age_list]
-    pyplot.hist(age_int, 100)
+    # age_int = [int(s.strip('岁')) for s in age_list]
+    age_int = []
+    for val in age_list:
+        try:
+            age = int(val.strip('岁'))
+        except Exception as e:
+            age = 1
+            print(e)
+        age_int.append(age)
+    pyplot.hist(age_int, age_int.max())
+
+        # age_array = np.array(age_int, dtype=int)
+    # pyplot.hist(age_array, age_array.max())
+
+    # num_bins = 100
+    # the histogram of the data
+    # n, bins, patches = pyplot.hist(age_array, num_bins, normed=1, facecolor='blue', alpha=0.5)
     pyplot.xlabel('Ages')
     pyplot.ylabel('Frequency')
     pyplot.title('Ages Frequency histogram')
     plt.show()
 
 
-if __name__ == "__main__":
-    data_df = pd.read_excel(r'C:\Users\LiuWeipeng\AnacondaProjects\files\20180428+急诊影像检查登记项目-匿名后数据 (1).xlsx')
-    # result = get_head_data()
-    result = get_kidney_data()
+def positive_rate(df):
+    """
+    判断某DataFrame的阳性率
+    :param df: 目标DataFrame
+    :return:阳性率
+    """
+    positive_df = pd.DataFrame(columns=df.columns)
+    for i in range(len(df)):
+        symptom = str(df['影像学诊断'][i])
+        if (symptom.find('未见异常') != -1 or
+                symptom.find('未见明显异常') != -1 or
+                symptom.find('未见明确异常') != -1 or
+                symptom.find('未见结石') != -1 or
+                symptom.find('未见明确结石') != -1 or
+                symptom.find('未见明显结石') != -1 or
+                symptom.find('未见阳性结石') != -1 or
+                symptom.find('未见明确阳性结石') != -1 or
+                symptom.find('未见明显阳性结石') != -1):
 
-    clear_data = result.dropna(axis=0, how='any')
+            positive_df = positive_df.append(data_df.loc[i])
+    res = 1 - len(positive_df)/len(df)
+    print(len(positive_df), len(df), res)
+    return res
+
+
+def by_year(year):
+    """
+    根据年份分组
+    :param year: 数值型
+    :return: DataFrame
+    """
+    res = pd.DataFrame(columns=clear_data.columns)
+    for i in range(len(clear_data)):
+        upload_time = clear_data['提交时间'][i]
+        if upload_time.year == year:
+                res = res.append(clear_data.loc[i])
+    return res
+
+
+def by_gender(gender):
+    """
+    根据性别分组
+    :param gender: 输入性别 男 女
+    :return: DataFrame
+    """
+    res = clear_data[clear_data['性别'] == gender]
+    return res
+
+
+if __name__ == "__main__":
+    # data_df = pd.read_excel(r'D:\文档\smart\医院文档\20180428 急诊影像检查登记项目-原始数据.xlsx')
+    data_df = pd.read_excel(r'D:\文档\smart\医院文档\2350例急诊泌尿系CT平扫总表20100101-20180430.xlsx')
+
+    # result = get_head_data()
+    # result = get_kidney_data()
+    result = data_df
+
+    clear_data = result.dropna(axis=0, how='all')
 
     use_time = (clear_data['提交时间'] - clear_data['检查时间']) / timedelta(minutes=1)
     used_time = pd.DataFrame(use_time, columns=['提交与检查时间差（分钟）'])
@@ -165,12 +237,15 @@ if __name__ == "__main__":
     num_list = list(use_time)
     general_analysis(num_list)
     move_bad(num_list)
-    plot_histogram(num_list,200)
-    hours_frequency('kidney')
+    plot_histogram(num_list, 200)
 
     print('审核与提交时间差分析')
     num_list = list(use_time2)
     general_analysis(num_list)
     move_bad(num_list)
     plot_histogram(num_list, 200)
+
+    hours_frequency('kidney')
     age_hist()
+
+    print(positive_rate(clear_data))
